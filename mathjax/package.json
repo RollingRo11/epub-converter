@@ -1,0 +1,12 @@
+{
+  "name": "epub-converter-mathjax",
+  "private": true,
+  "description": "Builds the MathJax bundle embedded in the epub-converter binary.",
+  "scripts": {
+    "build": "esbuild entry.js --bundle --format=iife --platform=neutral --main-fields=module,main --target=es2020 --minify --legal-comments=none --outfile=../assets/mathjax.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "mathjax-full": "3.2.2"
+  }
+}
