@@ -1,0 +1,163 @@
+/* epub-converter reading stylesheet. Kept to CSS that Kindle (KF8/KFX),
+   Apple Books, Kobo and KOReader all understand. */
+
+body {
+  margin: 0 2%;
+  line-height: 1.45;
+  text-align: left;
+  -webkit-hyphens: none;
+  hyphens: none;
+  adobe-hyphenate: none;
+  orphans: 2;
+  widows: 2;
+}
+
+p { margin: 0.55em 0; text-indent: 0; }
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  text-align: left;
+  page-break-after: avoid;
+  break-after: avoid;
+}
+h1 { font-size: 1.5em; margin: 1em 0 0.6em; text-align: center; }
+h2 { font-size: 1.3em; margin: 1.2em 0 0.6em; }
+h3 { font-size: 1.15em; margin: 1.1em 0 0.5em; }
+h4 { font-size: 1.05em; margin: 1em 0 0.4em; }
+h5, h6 { font-size: 1em; margin: 0.9em 0 0.3em; }
+h2.ltx_title_abstract { text-align: center; font-size: 1.1em; }
+
+/* Title page */
+.ltx_authors { text-align: center; margin: 0.8em 0 1.4em; }
+.ltx_authors .ltx_creator { display: block; margin: 0.35em 0; }
+.ltx_authors .ltx_author_before { display: none; }
+.ltx_author_notes { display: block; font-size: 0.82em; margin: 0.15em 0 0.5em; }
+.ltx_contact { display: block; }
+.ltx_contact_name, .ltx_note_name { font-style: italic; }
+.ltx_dates { display: block; text-align: center; font-size: 0.9em; }
+.ltx_abstract { margin: 1em 1em 1.5em; }
+.ltx_abstract p { font-size: 0.95em; }
+.ltx_keywords, .ltx_classification { font-size: 0.9em; margin: 0.6em 0; }
+
+/* Fonts (LaTeXML classes) */
+.ltx_font_bold { font-weight: bold; }
+.ltx_font_medium { font-weight: normal; }
+.ltx_font_italic { font-style: italic; }
+.ltx_font_slanted { font-style: oblique; }
+.ltx_font_upright { font-style: normal; }
+.ltx_font_smallcaps { font-variant: small-caps; }
+.ltx_font_typewriter, code, kbd, samp { font-family: monospace; }
+.ltx_font_sansserif { font-family: sans-serif; }
+.ltx_font_serif { font-family: serif; }
+.ltx_underline { text-decoration: underline; }
+.ltx_ulem_uline, .ltx_ulem_uuline, .ltx_ulem_uwave { text-decoration: underline; }
+.ltx_ulem_sout, .ltx_ulem_xout { text-decoration: line-through; }
+.ltx_phantom { visibility: hidden; }
+blockquote, .ltx_quote { margin: 0.6em 1.5em; }
+.ltx_centering { text-align: center; }
+.ltx_align_left { text-align: left; }
+.ltx_align_right { text-align: right; }
+.ltx_align_center { text-align: center; }
+sup, sub { font-size: 0.75em; line-height: 0; }
+
+/* Run-in titles: theorems, proofs, \paragraph */
+.ltx_runin { font-weight: bold; }
+.ltx_title_proof { font-style: italic; font-weight: normal; }
+.ltx_theorem, .ltx_proof { margin: 0.8em 0; }
+
+/* Equations */
+img.ltx_math_img { border: 0; margin: 0; padding: 0; }
+img.ltx_math_display { max-width: 100%; height: auto; }
+.ltx_eqn_group { margin: 0.8em 0; }
+.ltx_eq {
+  text-align: center;
+  margin: 0.35em 0;
+  text-indent: 0;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.ltx_eq img.ltx_math_display { max-width: 86%; }
+.ltx_eqno { float: right; margin-left: 0.4em; }
+.ltx_eq_html { margin: 0.5em 0; }
+.ltx_tex_fallback { font-family: monospace; font-size: 0.85em; }
+
+/* Figures and tables */
+figure {
+  margin: 1.1em 0;
+  text-align: center;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+img.ltx_graphics { max-width: 100%; height: auto; }
+figcaption, .ltx_caption { font-size: 0.88em; text-align: left; margin: 0.5em 0; line-height: 1.35; }
+.ltx_tag_figure, .ltx_tag_table { font-weight: bold; }
+.ltx_flex_figure, .ltx_flex_cell { text-align: center; }
+.ltx_missing { font-style: italic; color: #a00000; }
+
+table {
+  border-collapse: collapse;
+  margin: 0.8em auto;
+  font-size: 0.85em;
+  line-height: 1.3;
+}
+td, th { padding: 0.15em 0.45em; vertical-align: middle; }
+th { font-weight: inherit; }
+/* Tables from web pages have no LaTeX rules: draw a light grid. */
+table.web_table td, table.web_table th { border: 1px solid #888; }
+.ltx_border_t { border-top: 1px solid #000; }
+.ltx_border_b { border-bottom: 1px solid #000; }
+.ltx_border_l { border-left: 1px solid #000; }
+.ltx_border_r { border-right: 1px solid #000; }
+.ltx_border_tt { border-top: 2px solid #000; }
+.ltx_border_bb { border-bottom: 2px solid #000; }
+.ltx_border_ll { border-left: 2px solid #000; }
+.ltx_border_rr { border-right: 2px solid #000; }
+
+/* Lists */
+ul, ol { margin: 0.5em 0; padding-left: 1.6em; }
+li { margin: 0.3em 0; }
+li p { margin: 0.2em 0; }
+ul.ltx_custom_list, ol.ltx_custom_list { list-style-type: none; padding-left: 1.2em; }
+.ltx_custom_list > li { list-style-type: none; }
+dl { margin: 0.6em 0; }
+dt { font-weight: bold; margin-top: 0.4em; }
+dd { margin: 0.1em 0 0.4em 1.5em; }
+
+/* Bibliography */
+ul.ltx_biblist { list-style-type: none; padding-left: 0; }
+li.ltx_bibitem { margin: 0.6em 0; font-size: 0.92em; }
+.ltx_tag_bibitem { font-weight: bold; }
+.ltx_url, .ltx_Url, a.ltx_url { word-wrap: break-word; overflow-wrap: break-word; word-break: break-all; }
+
+/* Code listings and algorithms */
+.ltx_listing, .ltx_verbatim, pre {
+  font-family: monospace;
+  font-size: 0.8em;
+  text-align: left;
+  white-space: pre-wrap;
+  margin: 0.8em 0;
+}
+.ltx_listingline { white-space: pre-wrap; }
+figure.ltx_float, figure.ltx_lstlisting { page-break-inside: auto; break-inside: auto; text-align: left; }
+.ltx_framed, .ltx_framed_rectangle { border: 1px solid #000; padding: 0.3em 0.5em; }
+.ltx_framed_top { border-top: 1px solid #000; }
+.ltx_framed_bottom { border-bottom: 1px solid #000; }
+.ltx_framed_topbottom { border-top: 1px solid #000; border-bottom: 1px solid #000; }
+.ltx_float_algorithm, .ltx_algorithm { text-align: left; }
+
+/* Footnotes */
+a.noteref { text-decoration: none; }
+section.footnotes { margin-top: 2em; padding-top: 0.6em; border-top: 1px solid #888; }
+aside.footnote { font-size: 0.86em; margin: 0.5em 0; }
+aside.footnote p { margin: 0.25em 0; }
+a.fn-back { text-decoration: none; font-weight: bold; }
+
+/* Links */
+a { color: inherit; }
+a.ltx_ref { text-decoration: none; }
+a.ltx_url, a.ltx_href { text-decoration: underline; }
+
+/* Cover page */
+body.cover { margin: 0; padding: 0; text-align: center; }
+div.cover { margin: 0; padding: 0; text-align: center; page-break-after: always; }
+div.cover img { max-width: 100%; max-height: 100%; }

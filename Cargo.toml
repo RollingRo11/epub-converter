@@ -1,0 +1,24 @@
+[package]
+name = "epub-converter"
+version = "0.1.0"
+edition = "2024"
+description = "Turn arXiv papers and math-heavy web pages into clean EPUBs for e-readers"
+license = "MIT"
+repository = "https://github.com/RollingRo11/epub-converter"
+readme = "README.md"
+
+[dependencies]
+anyhow = "1.0.104"
+base64 = "0.23.1"
+clap = { version = "4.6.7", features = ["derive"] }
+ego-tree = "0.11"
+imagesize = "0.15.0"
+png = "0.18.1"
+rayon = "1.12.0"
+resvg = "0.48.1"
+rquickjs = "0.14.0"
+scraper = "0.27.0"
+time = { version = "0.3.55", features = ["formatting"] }
+ureq = "3.4.2"
+url = "2.5.8"
+zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
