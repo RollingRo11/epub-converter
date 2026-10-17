@@ -89,7 +89,12 @@ fn run(args: &Args) -> Result<()> {
                         .map(|n| n.to_string_lossy())
                         .unwrap_or_default()
                 ));
-                let rendered = browser::render(paper.base.as_str(), &exe, &log)?;
+                let detail = |msg: String| {
+                    if args.verbose {
+                        eprintln!("{msg}");
+                    }
+                };
+                let rendered = browser::render(paper.base.as_str(), &exe, &log, &detail)?;
                 paper.html = rendered.html;
                 shots = rendered.shots;
             }
