@@ -1487,6 +1487,27 @@ fn author_names(article: &ElementRef) -> Vec<String> {
     names
 }
 
+/// Is this an arXiv/LaTeXML paper (rather than a general web page)?
+pub fn is_latexml(html: &str) -> bool {
+    Html::parse_document(html)
+        .select(&sel("article.ltx_document"))
+        .next()
+        .is_some()
+}
+
+/// Does this web page draw figures with JavaScript (canvases, controls)?
+pub fn needs_browser(html: &str) -> bool {
+    let doc = Html::parse_document(html);
+    // Canvases and figure controls, or empty placeholders that scripts fill in
+    // ("graph-mount", "eq-interactive", Plotly / Vega / Observable charts).
+    doc.select(&sel(
+        "canvas, figure button, figure input, figure select, [class*=\"mount\"], [id*=\"mount\"], \
+         [class*=\"interactive\"], [class*=\"plotly\"], [class*=\"vega-embed\"], [class*=\"observablehq\"]",
+    ))
+        .next()
+        .is_some()
+}
+
 /// Fetches a supporting file (e.g. a Distill page's bibliography) by URL.
 pub type Fetch<'a> = &'a dyn Fn(&str) -> Option<Vec<u8>>;
 
@@ -1681,6 +1702,8 @@ fn resolve_links(book: &mut Book) {
         walk_mut(&mut ch.notes, &mut f);
     }
     if dangling > 0 {
-        book.warnings.push(format!("{dangling} internal links pointed at content that isn't in the page; kept as text"));
+        book.warnings.push(format!(
+            "{dangling} internal links pointed at content that isn't in the page; kept as text"
+        ));
     }
 }

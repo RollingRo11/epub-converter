@@ -80,6 +80,9 @@ the arXiv id (`2501.14926v4.epub`) or the page address
 | `--no-cover` | Don't generate a cover image |
 | `--base-url <url>` | For saved HTML files: where their images live online |
 | `-v, --verbose` | Also list equations that needed a fallback (see below) |
+| `--browser` | Always photograph a web page's figures in a hidden browser (see [Interactive pages](#interactive-pages)) |
+| `--no-browser` | Never use a browser; use the page's HTML only |
+| `--browser-path <path>` | Which browser to use (any Chromium-based one) |
 | `-q, --quiet` | Only print errors |
 | `-h, --help` | Show help |
 
@@ -170,9 +173,31 @@ Any link that isn't an arXiv paper is treated as a general web page:
   footnotes, appendix, author list and a numbered reference list built from the
   page's bibliography.
 
+### Interactive pages
+
+Some essays draw their figures with JavaScript: canvases, tabbed image grids,
+sliders, hover-to-explore diagrams. Their HTML alone can't show those figures.
+For pages like that, epub-converter:
+
+1. opens the page in a hidden browser (Chrome, Chromium, Brave or Edge; it
+   uses whichever is installed) with a temporary profile, so your own browsing
+   data is never touched;
+2. lets the page's JavaScript run;
+3. takes a sharp picture of each interactive figure (and of canvas widgets
+   such as graph viewers) as it first appears, and keeps its caption as text;
+4. builds the book from the page as the browser shows it. The essay's text
+   stays real text.
+
+This happens automatically when a page has interactive figures, or empty
+placeholders that its scripts fill in (like `graph-mount`, Plotly or Vega charts). It takes
+longer (about a minute for a long essay with ~60 figures) and makes bigger
+files. If no suitable browser is installed, the tool says so and converts the
+HTML alone. Use `--no-browser` to skip it, or `--browser` to use it on any page.
+
 Tested on ericjmichaud.com/quanta, transformer-circuits.pub, Lilian Weng's blog,
 colah's blog, Karpathy's blog, Terence Tao's blog, Gregory Gundersen's blog,
-The Illustrated Transformer and Wikipedia. Every site is built differently, so
+The Illustrated Transformer, Wikipedia, and already-clean.goodfire.com
+(interactive). Every site is built differently, so
 an unusual layout may still need a fix. Please open an issue with the link.
 
 ---
@@ -207,6 +232,8 @@ Additions on top of that:
 input (arXiv id / link / file)
   │
   ├─ source.rs       fetch the HTML (arXiv, ar5iv, any URL, or a file)
+  ├─ browser.rs      interactive pages: render in a hidden browser and
+  │                  photograph the figures
   ├─ convert.rs      arXiv/LaTeXML HTML → chapters; equations and images
   │   └─ web.rs      become placeholders. web.rs does the same for any
   │                  other web page.
@@ -258,8 +285,10 @@ compared word by word against the source page, to make sure nothing was dropped.
 - **Equation images have transparent backgrounds** (as in md2kindle). Fine on
   e-ink; in a phone or tablet app with a dark theme they can be hard to see.
 - **Wide tables stay tables.** On small screens you may need to pan or zoom.
-- **Web pages vary.** Pages built by JavaScript after loading (where the text
-  isn't in the HTML at all) can't be converted.
+- **Web pages vary.** Pages whose *text* is built by JavaScript after loading
+  are only handled in browser mode (`--browser`).
+- **Interactive figures become pictures** of how they first appear. Anything
+  you'd normally reveal by hovering or clicking isn't in the book.
 
 ---
 

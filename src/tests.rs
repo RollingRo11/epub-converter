@@ -221,13 +221,16 @@ fn web_page() {
 <p style="display:none">hidden words</p>
 <h2>Results</h2>
 <p>Results paragraph that is long enough to count as the main article text for the root finder.</p>
+<div class="share-buttons">Share this on everything</div>
+<div class="panel"><figcaption>A stray caption outside any figure.</figcaption></div>
+<section id="social-security-appendix"><h2>Appendix: Social Security</h2><p>Appendix text that must be kept.</p></section>
 </article></main>
 <footer>Copyright and links that are not part of the article at all.</footer>
 </body></html>"##;
     let book = convert::convert(html, Url::parse("https://example.org/post/").unwrap()).unwrap();
     assert_eq!(book.title, "Notes on scaling");
     assert_eq!(book.authors, vec!["Ada Lovelace".to_string()]);
-    assert_eq!(book.chapters.len(), 3, "title page + one chapter per h2");
+    assert_eq!(book.chapters.len(), 4, "title page + one chapter per h2");
     assert!(book.math_preamble.contains(r"\newcommand{\vx}"));
     let texs: Vec<&str> = book.math_jobs.iter().map(|j| j.tex.as_str()).collect();
     assert!(
@@ -256,7 +259,10 @@ fn web_page() {
     assert!(out.contains("costing $5 per run"));
     assert!(out.contains(r#"<span class="ltx_eqno">(2)</span>"#));
     assert!(out.contains("$not math$"));
-    for gone in ["Home", "hidden words", "Copyright"] {
+    assert!(out.contains("Appendix text that must be kept"));
+    assert!(out.contains(r#"<div class="ltx_caption">A stray caption"#));
+    assert!(!out.contains("<figcaption>A stray"));
+    for gone in ["Home", "hidden words", "Copyright", "Share this"] {
         assert!(!out.contains(gone), "{gone} should have been dropped");
     }
 }

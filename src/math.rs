@@ -70,7 +70,14 @@ impl Engine {
             f.call::<_, String>((source, display))
                 .catch(&ctx)
                 // The message is the first line; the rest is a JS stack trace.
-                .map_err(|e| e.to_string().lines().next().unwrap_or("").trim().to_string())
+                .map_err(|e| {
+                    e.to_string()
+                        .lines()
+                        .next()
+                        .unwrap_or("")
+                        .trim()
+                        .to_string()
+                })
         })
     }
 

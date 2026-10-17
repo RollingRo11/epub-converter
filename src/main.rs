@@ -1,4 +1,4 @@
-use epub_converter::{convert, cover, epub, layout, math, source, tree};
+use epub_converter::{browser, convert, cover, epub, layout, math, source, tree};
 
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -34,6 +34,19 @@ struct Args {
     /// Also list every equation whose TeX MathJax rejected (and why).
     #[arg(short, long)]
     verbose: bool,
+
+    /// Always open web pages in a hidden browser and photograph their
+    /// figures (normally only done for pages with interactive figures).
+    #[arg(long, conflicts_with = "no_browser")]
+    browser: bool,
+
+    /// Never use a browser; convert the page's HTML only.
+    #[arg(long)]
+    no_browser: bool,
+
+    /// The browser to use (any Chromium-based one: Chrome, Chromium, Brave, Edge).
+    #[arg(long, value_name = "PATH")]
+    browser_path: Option<PathBuf>,
 }
 
 fn main() {
@@ -62,7 +75,30 @@ fn run(args: &Args) -> Result<()> {
         let paper = source::fetch_paper(&input, args.base_url.as_deref());
         (paper, meta.join().ok().flatten())
     });
-    let paper = paper?;
+    let mut paper = paper?;
+
+    // Interactive web pages: let a real browser draw the figures.
+    let mut shots: Vec<Vec<u8>> = Vec::new();
+    let is_web = paper.arxiv_id.is_none() && !convert::is_latexml(&paper.html);
+    if is_web && !args.no_browser && (args.browser || convert::needs_browser(&paper.html)) {
+        match browser::find_browser(args.browser_path.as_deref()) {
+            Some(exe) => {
+                log(format!(
+                    "rendering the page in {} (hidden, with a temporary profile)",
+                    exe.file_name()
+                        .map(|n| n.to_string_lossy())
+                        .unwrap_or_default()
+                ));
+                let rendered = browser::render(paper.base.as_str(), &exe, &log)?;
+                paper.html = rendered.html;
+                shots = rendered.shots;
+            }
+            None => eprintln!(
+                "warning: this page's figures are drawn by JavaScript; install Chrome, Chromium, \
+                 Brave or Edge (or pass --browser-path) to include them as pictures"
+            ),
+        }
+    }
 
     let mut book =
         convert::convert_with(&paper.html, paper.base.clone(), &|u| source::fetch(u).ok())?;
@@ -91,7 +127,21 @@ fn run(args: &Args) -> Result<()> {
     // Typeset equations while the figures download.
     let (math, fetched) = std::thread::scope(|s| {
         let images = &book.images;
-        let downloads = s.spawn(move || source::fetch_images(images));
+        let shots = &shots;
+        let downloads = s.spawn(move || {
+            // Figure photos from browser mode are already in memory.
+            let mut out = source::fetch_images(images);
+            for (url, r) in images.iter().zip(out.iter_mut()) {
+                if let Some(n) = url.strip_prefix("epubshot:") {
+                    *r = n
+                        .parse::<usize>()
+                        .ok()
+                        .and_then(|n| shots.get(n).cloned())
+                        .ok_or_else(|| format!("missing figure photo {n}"));
+                }
+            }
+            out
+        });
         let math = math::render_all(&book.math_jobs, &book.math_preamble);
         (
             math,
@@ -210,14 +260,23 @@ fn page_stem(url: &url::Url) -> String {
         .path_segments()
         .into_iter()
         .flatten()
-        .filter(|s| !s.is_empty() && !s.starts_with("index."))
-        .last()
+        .rfind(|s| !s.is_empty() && !s.starts_with("index."))
         .map(|s| s.rsplit_once('.').map_or(s, |(stem, _)| stem).to_string())
         .or_else(|| url.host_str().map(str::to_string))
         .unwrap_or_default();
     let clean: String = segment
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.') { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.') {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
-    if clean.trim_matches(['_', '.']).is_empty() { "page".into() } else { clean }
+    if clean.trim_matches(['_', '.']).is_empty() {
+        "page".into()
+    } else {
+        clean
+    }
 }

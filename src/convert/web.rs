@@ -18,7 +18,7 @@ use url::Url;
 use super::{
     Book, Chapter, Conv, Fetch, Slot, TocEntry, collapse_ws, has, plain_text, resolve_links, sel,
 };
-use crate::tree::{El, Node, normalize, sanitize_id, walk, walk_mut};
+use crate::tree::{El, Node, normalize, sanitize_id, walk};
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Delim {
@@ -60,64 +60,137 @@ const ENVIRONMENTS: &[&str] = &[
     "CD",
 ];
 
-/// Class / id words that mark page furniture rather than article content.
-const CHROME_WORDS: &[&str] = &[
+/// Whole class or id names that mark page furniture rather than content.
+const CHROME_NAMES: &[&str] = &[
     "comments",
+    "comment-list",
     "commentlist",
+    "comments-area",
     "respond",
+    "comment-respond",
     "share",
     "sharing",
-    "social",
-    "related",
-    "navbar",
-    "navbox",
-    "subscribe",
+    "share-buttons",
+    "share-links",
+    "social-share",
+    "social-links",
+    "social-icons",
+    "sharedaddy",
+    "jp-relatedposts",
+    "related-posts",
+    "related-articles",
     "newsletter",
+    "subscribe",
     "sidebar",
-    "widget",
-    "breadcrumb",
-    "breadcrumbs",
     "toc",
+    "table-of-contents",
     "menu",
     "pagination",
+    "skip-link",
+    "skip-to-content",
+    "jump-link",
+    "mw-jump-link",
+    "cookie-banner",
     "advert",
     "ads",
-    "promo",
-    "cookie",
+];
+
+/// Words that mark furniture wherever they appear in a class or id
+/// ("site-navbar", "mw-editsection"). Kept to words that never name content.
+const CHROME_WORDS: &[&str] = &[
+    "navbar",
+    "navbox",
+    "sidebar",
+    "breadcrumb",
+    "breadcrumbs",
     "editsection",
     "noprint",
     "printfooter",
     "catlinks",
-    "skip",
-    "jump",
+    "sharedaddy",
+    "newsletter",
+    "cookie",
+    "advert",
+    "commentlist",
 ];
 
 /// Shortcuts KaTeX has built in but MathJax lacks, for pages drawn by KaTeX.
 const KATEX_BUILTINS: &[(&str, &str)] = &[
     // Number sets
-    ("R", r"\mathbb{R}"), ("N", r"\mathbb{N}"), ("Z", r"\mathbb{Z}"), ("Q", r"\mathbb{Q}"),
-    ("C", r"\mathbb{C}"), ("Reals", r"\mathbb{R}"), ("reals", r"\mathbb{R}"),
-    ("Complex", r"\mathbb{C}"), ("cnums", r"\mathbb{C}"), ("natnums", r"\mathbb{N}"),
+    ("R", r"\mathbb{R}"),
+    ("N", r"\mathbb{N}"),
+    ("Z", r"\mathbb{Z}"),
+    ("Q", r"\mathbb{Q}"),
+    ("C", r"\mathbb{C}"),
+    ("Reals", r"\mathbb{R}"),
+    ("reals", r"\mathbb{R}"),
+    ("Complex", r"\mathbb{C}"),
+    ("cnums", r"\mathbb{C}"),
+    ("natnums", r"\mathbb{N}"),
     // Greek capitals that look like Latin letters
-    ("Alpha", r"\mathrm{A}"), ("Beta", r"\mathrm{B}"), ("Epsilon", r"\mathrm{E}"),
-    ("Zeta", r"\mathrm{Z}"), ("Eta", r"\mathrm{H}"), ("Iota", r"\mathrm{I}"),
-    ("Kappa", r"\mathrm{K}"), ("Mu", r"\mathrm{M}"), ("Nu", r"\mathrm{N}"),
-    ("Omicron", r"\mathrm{O}"), ("Rho", r"\mathrm{P}"), ("Tau", r"\mathrm{T}"),
-    ("Chi", r"\mathrm{X}"), ("omicron", "o"), ("thetasym", r"\vartheta"),
+    ("Alpha", r"\mathrm{A}"),
+    ("Beta", r"\mathrm{B}"),
+    ("Epsilon", r"\mathrm{E}"),
+    ("Zeta", r"\mathrm{Z}"),
+    ("Eta", r"\mathrm{H}"),
+    ("Iota", r"\mathrm{I}"),
+    ("Kappa", r"\mathrm{K}"),
+    ("Mu", r"\mathrm{M}"),
+    ("Nu", r"\mathrm{N}"),
+    ("Omicron", r"\mathrm{O}"),
+    ("Rho", r"\mathrm{P}"),
+    ("Tau", r"\mathrm{T}"),
+    ("Chi", r"\mathrm{X}"),
+    ("omicron", "o"),
+    ("thetasym", r"\vartheta"),
     // HTML-style names
-    ("lang", r"\langle"), ("rang", r"\rangle"), ("larr", r"\leftarrow"),
-    ("rarr", r"\rightarrow"), ("Larr", r"\Leftarrow"), ("lArr", r"\Leftarrow"),
-    ("Rarr", r"\Rightarrow"), ("rArr", r"\Rightarrow"), ("harr", r"\leftrightarrow"),
-    ("lrarr", r"\leftrightarrow"), ("Harr", r"\Leftrightarrow"), ("hArr", r"\Leftrightarrow"),
-    ("Lrarr", r"\Leftrightarrow"), ("lrArr", r"\Leftrightarrow"), ("uarr", r"\uparrow"),
-    ("darr", r"\downarrow"), ("Uarr", r"\Uparrow"), ("uArr", r"\Uparrow"),
-    ("Darr", r"\Downarrow"), ("dArr", r"\Downarrow"), ("empty", r"\emptyset"),
-    ("infin", r"\infty"), ("isin", r"\in"), ("sub", r"\subset"), ("sube", r"\subseteq"),
-    ("supe", r"\supseteq"), ("real", r"\Re"), ("image", r"\Im"), ("alef", r"\aleph"),
-    ("alefsym", r"\aleph"), ("exist", r"\exists"), ("sdot", r"\cdot"), ("plusmn", r"\pm"),
-    ("sect", r"\S"), ("bull", r"\bullet"), ("Dagger", r"\ddagger"), ("weierp", r"\wp"),
-    ("clubs", r"\clubsuit"), ("diamonds", r"\diamondsuit"), ("hearts", r"\heartsuit"),
+    ("lang", r"\langle"),
+    ("rang", r"\rangle"),
+    ("larr", r"\leftarrow"),
+    ("rarr", r"\rightarrow"),
+    ("Larr", r"\Leftarrow"),
+    ("lArr", r"\Leftarrow"),
+    ("Rarr", r"\Rightarrow"),
+    ("rArr", r"\Rightarrow"),
+    ("harr", r"\leftrightarrow"),
+    ("lrarr", r"\leftrightarrow"),
+    ("Harr", r"\Leftrightarrow"),
+    ("hArr", r"\Leftrightarrow"),
+    ("Lrarr", r"\Leftrightarrow"),
+    ("lrArr", r"\Leftrightarrow"),
+    ("uarr", r"\uparrow"),
+    ("darr", r"\downarrow"),
+    ("Uarr", r"\Uparrow"),
+    ("uArr", r"\Uparrow"),
+    ("Darr", r"\Downarrow"),
+    ("dArr", r"\Downarrow"),
+    ("empty", r"\emptyset"),
+    ("infin", r"\infty"),
+    ("isin", r"\in"),
+    ("sub", r"\subset"),
+    ("sube", r"\subseteq"),
+    ("supe", r"\supseteq"),
+    ("real", r"\Re"),
+    ("image", r"\Im"),
+    ("alef", r"\aleph"),
+    ("alefsym", r"\aleph"),
+    ("exist", r"\exists"),
+    ("sdot", r"\cdot"),
+    ("plusmn", r"\pm"),
+    ("sect", r"\S"),
+    ("bull", r"\bullet"),
+    ("Dagger", r"\ddagger"),
+    ("weierp", r"\wp"),
+    ("clubs", r"\clubsuit"),
+    ("diamonds", r"\diamondsuit"),
+    ("hearts", r"\heartsuit"),
     ("spades", r"\spadesuit"),
+    // KaTeX's HTML extension (classes/ids for a page's interactive highlighting):
+    // in a book only the content matters.
+    ("htmlClass#1#2", "#2"),
+    ("htmlId#1#2", "#2"),
+    ("htmlStyle#1#2", "#2"),
+    ("htmlData#1#2", "#2"),
 ];
 
 // ---------------------------------------------------------------------------
@@ -402,7 +475,10 @@ fn math_setup(doc: &Html) -> MathSetup {
     let escapes = delims.iter().any(|d| d.left == "$");
     let mut macros = config_macros(&js);
     if katex {
-        let builtins: String = KATEX_BUILTINS.iter().map(|(name, body)| format!("\\def\\{name}{{{body}}}")).collect();
+        let builtins: String = KATEX_BUILTINS
+            .iter()
+            .map(|(name, body)| format!("\\def\\{name}{{{body}}}"))
+            .collect();
         macros.insert_str(0, &builtins);
     }
     MathSetup {
@@ -609,7 +685,30 @@ fn is_chrome(el: &ElementRef) -> bool {
     }) {
         return true;
     }
-    classes_and_id(el).any(|name| name.split(['-', '_']).any(|w| CHROME_WORDS.contains(&w)))
+    // A section with its own heading is content, whatever it's called
+    // (an essay's "social-security-appendix", Distill's "skip-trigrams").
+    let has_heading = el
+        .children()
+        .filter_map(ElementRef::wrap)
+        .any(|c| matches!(c.value().name(), "h1" | "h2" | "h3" | "h4"));
+    let comments = classes_and_id(el).any(|n| {
+        matches!(
+            n.as_str(),
+            "comments"
+                | "comment-list"
+                | "commentlist"
+                | "comments-area"
+                | "respond"
+                | "comment-respond"
+        )
+    });
+    if has_heading && !comments && matches!(el.value().name(), "section" | "article") {
+        return false;
+    }
+    classes_and_id(el).any(|name| {
+        CHROME_NAMES.contains(&name.as_str())
+            || name.split(['-', '_']).any(|w| CHROME_WORDS.contains(&w))
+    })
 }
 
 fn is_hidden(el: &ElementRef) -> bool {
@@ -916,8 +1015,23 @@ fn pick_root(doc: &Html) -> ElementRef<'_> {
         .select(&sel("body"))
         .next()
         .unwrap_or_else(|| doc.root_element());
-    if let Some(a) = doc.select(&sel("d-article")).next() {
-        return a;
+    // Distill articles; some sites split one article into several
+    // <d-article> chunks, so take the element holding all of them.
+    let chunks: Vec<ElementRef> = doc
+        .select(&sel("d-article"))
+        .filter(|a| text_len(a) > 0)
+        .collect();
+    if let Some(first) = chunks.first() {
+        let common = std::iter::once(*first)
+            .chain(first.ancestors().filter_map(ElementRef::wrap))
+            .find(|cand| {
+                chunks
+                    .iter()
+                    .all(|c| c.id() == cand.id() || c.ancestors().any(|a| a.id() == cand.id()))
+            });
+        if let Some(c) = common {
+            return c;
+        }
     }
     let mut scores: HashMap<NodeId, f64> = HashMap::new();
     for p in doc.select(&sel("p, pre")) {
@@ -963,6 +1077,30 @@ fn pick_root(doc: &Html) -> ElementRef<'_> {
         best_len = len;
     }
     best
+}
+
+/// "Post title - Site" -> "Post title", when the tail is the site's name.
+fn strip_site_name(title: &str, site: Option<&str>, url: &Url) -> String {
+    let host_word = url
+        .host_str()
+        .unwrap_or("")
+        .trim_start_matches("www.")
+        .split('.')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    for sep in [" - ", " | ", " — ", " – ", " · "] {
+        if let Some((head, tail)) = title.rsplit_once(sep) {
+            let t = tail.trim().to_ascii_lowercase();
+            let squashed: String = t.chars().filter(|c| c.is_alphanumeric()).collect();
+            let is_site = site.is_some_and(|s| s.trim().eq_ignore_ascii_case(tail.trim()))
+                || (!host_word.is_empty() && squashed == host_word);
+            if is_site && !head.trim().is_empty() {
+                return head.trim().to_string();
+            }
+        }
+    }
+    title.to_string()
 }
 
 fn meta(doc: &Html, keys: &[&str]) -> Vec<String> {
@@ -1200,6 +1338,20 @@ fn format_bib(f: &HashMap<String, String>) -> String {
     parts.join(". ") + "."
 }
 
+/// Like `walk_mut`, but headings inside figures (interactive widgets often
+/// have them) are not section headings.
+fn walk_outside_figures(nodes: &mut [Node], f: &mut impl FnMut(&mut El)) {
+    for n in nodes {
+        if let Node::El(e) = n {
+            if e.tag == "figure" {
+                continue;
+            }
+            f(e);
+            walk_outside_figures(&mut e.children, f);
+        }
+    }
+}
+
 fn heading_level(n: &Node) -> Option<u8> {
     match n.as_el()?.tag {
         "h1" => Some(1),
@@ -1299,7 +1451,7 @@ pub(super) fn convert(doc: &Html, base: Url, fetch: Fetch) -> Result<Book> {
     }
     let bib = parse_bibtex(&bib_src);
 
-    let mut cv = Conv::new(base, 700.0);
+    let mut cv = Conv::new(base.clone(), 700.0);
     cv.web = Some(WebCtx {
         delims: setup.delims,
         escapes: setup.escapes,
@@ -1314,17 +1466,34 @@ pub(super) fn convert(doc: &Html, base: Url, fetch: Fetch) -> Result<Book> {
         .next()
         .map(|h| plain_text(&h))
         .filter(|t| !t.is_empty());
+    // The page's main heading, when the article itself doesn't carry it.
+    let page_h1 = doc
+        .select(&sel("h1"))
+        .find(|h| {
+            !h.ancestors()
+                .filter_map(ElementRef::wrap)
+                .any(|a| matches!(a.value().name(), "nav" | "footer") || is_chrome(&a))
+        })
+        .map(|h| plain_text(&h))
+        .filter(|t| !t.is_empty());
+    let site_name = meta(doc, &["og:site_name", "application-name"])
+        .into_iter()
+        .next();
+    let strip = |t: String| strip_site_name(&t, site_name.as_deref(), &base);
     let title = root_h1
         .clone()
+        .or_else(|| meta(doc, &["citation_title"]).into_iter().next())
         .or_else(|| {
-            meta(doc, &["citation_title", "og:title", "twitter:title"])
+            meta(doc, &["og:title", "twitter:title"])
                 .into_iter()
                 .next()
+                .map(strip)
         })
+        .or(page_h1)
         .or_else(|| {
             doc.select(&sel("title"))
                 .next()
-                .map(|t| collapse_ws(&t.text().collect::<String>()))
+                .map(|t| strip(collapse_ws(&t.text().collect::<String>())))
         })
         .filter(|t| !t.is_empty())
         .unwrap_or_else(|| "Untitled".into());
@@ -1347,6 +1516,12 @@ pub(super) fn convert(doc: &Html, base: Url, fetch: Fetch) -> Result<Book> {
     }
     if root_h1.is_none() {
         let mut head = vec![El::new("h1").text(title.clone()).into()];
+        if let Some(sub) = meta(doc, &["description", "og:description"])
+            .into_iter()
+            .next()
+        {
+            head.push(El::new("p").class("subtitle").text(sub).into());
+        }
         if !authors.is_empty() {
             head.push(
                 El::new("p")
@@ -1360,7 +1535,7 @@ pub(super) fn convert(doc: &Html, base: Url, fetch: Fetch) -> Result<Book> {
 
     // Chapters: split at the highest section level the page uses.
     let mut counts = [0usize; 5];
-    walk(&nodes, &mut |e: &El| {
+    walk_outside_figures(&mut nodes, &mut |e: &mut El| {
         if let Some(l) = heading_level(&Node::El(El::new(e.tag))) {
             counts[l as usize] += 1;
         }
@@ -1400,7 +1575,7 @@ pub(super) fn convert(doc: &Html, base: Url, fetch: Fetch) -> Result<Book> {
         let mut subs: Vec<(String, String)> = Vec::new();
         let sub = level + 1;
         let skip_first = usize::from(i > 0).min(body.len());
-        walk_mut(&mut body[skip_first..], &mut |e: &mut El| {
+        walk_outside_figures(&mut body[skip_first..], &mut |e: &mut El| {
             if heading_level(&Node::El(El::new(e.tag))) == Some(sub) {
                 let id = cv.heading_id(e);
                 subs.push((cv.label(e), id));
@@ -1601,6 +1776,41 @@ mod tests {
             take_tag(r"a=b \tag{3}"),
             ("a=b ".to_string(), Some("(3)".to_string()))
         );
+    }
+
+    #[test]
+    fn site_names_and_split_articles() {
+        let u = Url::parse("https://www.goodfire.com/research/x").unwrap();
+        assert_eq!(
+            strip_site_name("Interpreting LM Parameters - Goodfire", None, &u),
+            "Interpreting LM Parameters"
+        );
+        assert_eq!(strip_site_name("A - B Testing", None, &u), "A - B Testing");
+        assert_eq!(
+            strip_site_name("Post | My Blog", Some("My Blog"), &u),
+            "Post"
+        );
+
+        // One article split over several <d-article> chunks, the first empty.
+        let html = r#"<html><body><nav>menu</nav><div class="rt">
+<d-article></d-article>
+<d-article><h2>One</h2><p>First chunk with a long enough paragraph of article text.</p></d-article>
+<d-article><h2>Two</h2><p>Second chunk with a long enough paragraph of article text.</p></d-article>
+</div></body></html>"#;
+        let doc = Html::parse_document(html);
+        let root = pick_root(&doc);
+        let text: String = root.text().collect();
+        assert!(text.contains("First chunk") && text.contains("Second chunk"));
+        assert!(!text.contains("menu"));
+    }
+
+    #[test]
+    fn katex_html_extension() {
+        let doc = Html::parse_document(
+            r#"<html><head><script src="katex/auto-render.js"></script></head><body></body></html>"#,
+        );
+        let setup = math_setup(&doc);
+        assert!(setup.macros.contains(r"\def\htmlClass#1#2{#2}"));
     }
 
     #[test]

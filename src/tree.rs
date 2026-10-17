@@ -164,7 +164,24 @@ fn node_is_phrasing(n: &Node) -> bool {
 
 /// Make the tree obey the content model. Returns the node(s) that replace `node`.
 pub fn normalize(node: Node) -> Vec<Node> {
-    normalize_in(node, false)
+    let mut out = normalize_in(node, false);
+    stray_captions(&mut out);
+    out
+}
+
+/// A `<figcaption>` outside a `<figure>` is invalid: make it a caption block.
+fn stray_captions(nodes: &mut [Node]) {
+    for n in nodes {
+        if let Node::El(e) = n
+            && e.tag == "figcaption"
+        {
+            e.tag = "div";
+            let class = e
+                .get("class")
+                .map_or("ltx_caption".to_string(), |c| format!("{c} ltx_caption"));
+            e.set("class", class);
+        }
+    }
 }
 
 fn normalize_in(node: Node, in_link: bool) -> Vec<Node> {
@@ -240,6 +257,10 @@ fn normalize_in(node: Node, in_link: bool) -> Vec<Node> {
                 e.tag = "span";
             }
         }
+    }
+
+    if el.tag != "figure" {
+        stray_captions(&mut children);
     }
 
     if !phrasing_only(el.tag) || children.iter().all(node_is_phrasing) {
